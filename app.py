@@ -13,35 +13,31 @@ st.title("🍲 WebKalorier – Multi-Ingrediens Kalorieestimering")
 df = pd.read_csv("kaloriedata.csv")
 food_list = df["navn"].tolist()
 
-# Lazy-load models
 @st.cache_resource
 def load_models():
-    # YOLO model for food detection
-    yolo = YOLO("keremberke/yolov5m-food-detection")
-    # Zero-shot CLIP for classification
+    # Use Ultralytics YOLOv8n (automatically downloaded)
+    yolo = YOLO("yolov8n.pt")
+    # Zero-shot CLIP classification
     zero_shot = pipeline(
         "zero-shot-image-classification",
         model="openai/clip-vit-base-patch32"
     )
     return yolo, zero_shot
 
-yolo, zero_shot = load_models()
-
 # Image uploader
-uploaded = st.file_uploader("Upload et billede af din mad", type=["jpg","jpeg","png"])
+uploaded = st.file_uploader("Upload et billede af din mad", type=["jpg", "jpeg", "png"])
 if uploaded:
+    # Lazy-load models upon first upload
+    yolo, zero_shot = load_models()
+
     image = Image.open(uploaded).convert("RGB")
     arr = np.array(image)
     st.image(image, caption="Originalt billede", use_column_width=True)
 
     # Object detection
     results = yolo(arr)
-    xy = results[0].boxes.xyxy.cpu().numpy()  # [N,4]
-    crops = []
-    for coords in xy:
-        x1, y1, x2, y2 = coords.astype(int)
-        crop = image.crop((x1, y1, x2, y2))
-        crops.append(crop)
+    xy = results[0].boxes.xyxy.cpu().numpy()
+    crops = [image.crop(tuple(coords.astype(int))) for coords in xy]
 
     st.subheader("Detekterede ingrediensbilleder")
     final_labels = []

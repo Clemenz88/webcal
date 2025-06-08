@@ -9,14 +9,16 @@ from transformers import pipeline
 st.set_page_config(page_title="WebKalorier Multi", layout="wide")
 st.title("🍲 WebKalorier – Multi-Ingrediens Kalorieestimering")
 
-# Load caloriedata
+# Load calorie data
 df = pd.read_csv("kaloriedata.csv")
 food_list = df["navn"].tolist()
 
 # Lazy-load models
 @st.cache_resource
 def load_models():
+    # YOLO model for food detection
     yolo = YOLO("keremberke/yolov5m-food-detection")
+    # Zero-shot CLIP for classification
     zero_shot = pipeline(
         "zero-shot-image-classification",
         model="openai/clip-vit-base-patch32"
@@ -45,7 +47,6 @@ if uploaded:
     final_labels = []
     for i, crop in enumerate(crops):
         st.image(crop, width=150, caption=f"Ingrediens {i+1}")
-        # Zero-shot classification
         res = zero_shot(crop, candidate_labels=food_list)
         label = res["labels"][0]
         score = res["scores"][0]
